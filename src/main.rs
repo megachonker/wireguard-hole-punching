@@ -1,7 +1,5 @@
 use bincode::{deserialize, serialize};
-use tokio::task;
 use clap::Parser;
-use std::thread;
 use std::{
     io::{Read, Write},
     net::{IpAddr, SocketAddr, TcpListener, TcpStream},
@@ -86,31 +84,30 @@ fn server(get_ip_stream: TcpStream) {
     client(get_ip_stream)
 }
 
-fn handle_connection(bind:TcpListener){
-    // match bind.incoming() {
-    //     Ok(strem) => {},
-    // }
-    // println!("New: {:?}",stream);
+fn handle_client(stream:TcpStream){
+    let local_addr = stream.local_addr().unwrap();
+    let peer_addr = stream.peer_addr().unwrap();
+
+    println!("New connection:");
+    println!("Local address: {:?}", local_addr);
+    println!("Remote address: {:?}", peer_addr);
 }
+
+fn handle_server(stream:TcpStream){
+    handle_client(stream);
+}
+
 
 fn randezvous() {
     // Bind the TCP listener to the IP address and port
-    // let listener = TcpListener::bind("127.0.0.1:1234").expect("Failed to bind to address");
-    // listener.incoming().aw
-    // // Accept incoming connections in a loop
-    // for stream in listener.incoming() {
-    //     match stream {
-    //         Ok(stream) => {
-    //             // Handle each incoming connection in a separate thread
-    //             thread::spawn(move || {
-    //                 handle_connection(stream);
-    //             });
-    //         }
-    //         Err(e) => {
-    //             println!("Error accepting connection: {}", e);
-    //         }
-    //     }
-    // }
+    let listener = TcpListener::bind("127.0.0.1:1234").expect("Failed to bind to address");
+    let server_stream = listener.incoming().next().unwrap().unwrap();
+    let client_stream = listener.incoming().next().unwrap().unwrap();
+
+    rayon::scope(|s| {
+        s.spawn(|_| handle_client(server_stream));
+        s.spawn(|_| handle_server(client_stream));
+    });
 
     println!("randezvous");
 }
