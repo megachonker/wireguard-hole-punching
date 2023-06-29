@@ -1,5 +1,5 @@
 use env_logger::Env;
-use bincode::{deserialize};
+use bincode::{deserialize, serialize};
 use clap::Parser;
 use log::{info, trace, error, debug, warn};
 use std::{
@@ -38,12 +38,6 @@ struct Cli {
 
     /// Addresse ip du point de rendez vous
     rdv_address: Option<IpAddr>,
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct IpPort {
-    ip: IpAddr,
-    port: u16,
 }
 
 fn main() {
@@ -90,11 +84,13 @@ fn client(mut get_ip_stream: TcpStream) {
     //listen to receive a IpPort
     let mut buffer = [0; 1024];
     get_ip_stream.read(&mut buffer).unwrap();
-    let received_ip_port: IpPort = deserialize(&buffer[..]).unwrap();
+    let received_socket: SocketAddr = CHK_ERROR!(deserialize(&buffer[..]),"SERD DESERIALIZE ERROR");
 
+    debug!("Receive ENDPOINT: {:?}",received_socket);
+
+    info!("trying to connect back...");
     //create new socket
-    let mut data_stream =
-        TcpStream::connect(SocketAddr::new(received_ip_port.ip, received_ip_port.port)).unwrap();
+    let mut data_stream = CHK_ERROR!(TcpStream::connect(received_socket),"Bad socket exchanged");
     //pass the VPN
     data_stream.write_all(b"Hello, server!").unwrap();
 }
@@ -104,17 +100,24 @@ fn server(get_ip_stream: TcpStream) {
     client(get_ip_stream)
 }
 
-fn handle_client(stream:TcpStream){
+fn handle_client(mut stream:TcpStream,server_socket:SocketAddr){
     let local_addr = stream.local_addr().unwrap();
     let peer_addr = stream.peer_addr().unwrap();
 
     info!("New connection:");
     debug!("Local address: {:?}", local_addr);
-    debug!("Remote address: {:?}", peer_addr);
+    debug!("randez_vous address: {:?}", peer_addr);
+    debug!("server address: {:?}", server_socket);
+
+    debug!("trying send server address");
+    let buf = CHK_ERROR!(serialize(&server_socket),"SERD SERIALIZE ERROR");
+    let slice_buf:&[u8] = &buf;
+    CHK_ERROR!(stream.write(slice_buf),"OPENING error");
+
 }
 
-fn handle_server(stream:TcpStream){
-    handle_client(stream);
+fn handle_server(stream:TcpStream,client_socket:SocketAddr){
+    handle_client(stream,client_socket);
 }
 
 
@@ -123,14 +126,19 @@ fn randezvous() {
     let listener = CHK_ERROR!(TcpListener::bind("0.0.0.0:12345"),"Failed to bind Randez Vous");
     info!("waiting Connection:");
     let server_stream = listener.incoming().next().unwrap().unwrap();
-    debug!("New Connexion");
+    debug!("New 1/2 Connexion");
     let client_stream = listener.incoming().next().unwrap().unwrap();
-    debug!("New Connexion");
+    debug!("New 2/2 Connexion");
+
+    //getting socket
+    let server_socket = CHK_ERROR!(server_stream.peer_addr(),"Imposible d'avoir le socket");
+    let client_socket = CHK_ERROR!(client_stream.peer_addr(),"Imposible d'avoir le socket");
 
     rayon::scope(|s| {
-        s.spawn(|_| handle_client(server_stream));
-        s.spawn(|_| handle_server(client_stream));
+        s.spawn(|_| handle_client(client_stream,server_socket));
+        s.spawn(|_| handle_server(server_stream,client_socket));
+        trace!("both thread as spawned");
     });
 
-    println!("randezvous");
+    info!("fin randez vous...");
 }
