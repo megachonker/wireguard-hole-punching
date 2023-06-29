@@ -92,12 +92,17 @@ fn client(mut get_ip_stream: TcpStream) {
     //create new socket
     let mut data_stream = CHK_ERROR!(TcpStream::connect(received_socket),"Bad socket exchanged");
     //pass the VPN
-    data_stream.write_all(b"Hello, server!").unwrap();
+    data_stream.write_all(b"Hello, server !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!").unwrap();
+    data_stream.write_all(b"Hello, server !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!").unwrap();
+    data_stream.write_all(b"Hello, server !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!").unwrap();
 }
 
 fn server(get_ip_stream: TcpStream) {
-    // println!("server");
-    client(get_ip_stream)
+    get_ip_stream.shutdown(std::net::Shutdown::Both).unwrap();
+    let mut listener = CHK_ERROR!(TcpListener::bind(get_ip_stream.local_addr().unwrap()),"Failed to bind server Pub Hack socket").incoming().next().unwrap().unwrap();
+    let mut buffer = [0; 1024];
+    listener.read(&mut buffer).unwrap();
+    warn!("RECEIVED DATA:{:?}",buffer);
 }
 
 fn handle_client(mut stream:TcpStream,server_socket:SocketAddr){
