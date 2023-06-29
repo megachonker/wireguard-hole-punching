@@ -120,9 +120,12 @@ fn handle_server(stream:TcpStream){
 
 fn randezvous() {
     // Bind the TCP listener to the IP address and port
-    let listener = CHK_ERROR!(TcpListener::bind("127.0.0.1:12345"),"Failed to bind Randez Vous");
+    let listener = CHK_ERROR!(TcpListener::bind("0.0.0.0:12345"),"Failed to bind Randez Vous");
+    info!("waiting Connection:");
     let server_stream = listener.incoming().next().unwrap().unwrap();
+    debug!("New Connexion");
     let client_stream = listener.incoming().next().unwrap().unwrap();
+    debug!("New Connexion");
 
     rayon::scope(|s| {
         s.spawn(|_| handle_client(server_stream));
