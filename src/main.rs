@@ -90,18 +90,58 @@ fn client(mut get_ip_stream: TcpStream) {
 
     info!("trying to connect back...");
     //create new socket
-    let mut data_stream = CHK_ERROR!(TcpStream::connect(received_socket),"Bad socket exchanged");
+
+
+    //BAD
+    // let mut data_stream = CHK_ERROR!(TcpStream::connect_timeout(received_socket),"Bad socket exchanged");
+    let mut data_stream = loop {
+        match TcpStream::connect_timeout(&received_socket,Duration::from_millis(0)) {
+            Ok(listener) => {
+                info!("AVAIBLE");
+                break listener;
+            }
+            Err(e) => {
+                trace!("try to connect {}",e);
+                // thread::sleep(Duration::from_secs(1));
+            }
+        }
+    };
+
+
     //pass the VPN
-    data_stream.write_all(b"Hello, server !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!").unwrap();
-    data_stream.write_all(b"Hello, server !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!").unwrap();
-    data_stream.write_all(b"Hello, server !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!").unwrap();
+    info!("sending mass shit");
+
+    //BAD
+    loop {
+        data_stream.write_all(b"Hello, server !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!").unwrap();
+    }
+
 }
 
 fn server(get_ip_stream: TcpStream) {
-    get_ip_stream.shutdown(std::net::Shutdown::Both).unwrap();
-    let mut listener = CHK_ERROR!(TcpListener::bind(get_ip_stream.local_addr().unwrap()),"Failed to bind server Pub Hack socket").incoming().next().unwrap().unwrap();
+    get_ip_stream.shutdown(std::net::Shutdown::Both).unwrap();// <= cette fonction ment!
+
+
+
+    //BAD
+    let listener = loop {
+        match TcpListener::bind(get_ip_stream.local_addr().unwrap()) {
+            Ok(listener) => {
+                info!("AVAIBLE");
+                break listener;
+            }
+            Err(e) => {
+                trace!("waiting avaible lolu {}",e);
+                // thread::sleep(Duration::from_secs(1));
+            }
+        }
+    };
+    
+    
+    // let listener = CHK_ERROR!(TcpListener::bind(get_ip_stream.local_addr().unwrap()),"Failed to bind server Pub Hack socket");
+    let mut stream = CHK_ERROR!(listener.incoming().next().unwrap(),"Erreur Ouverture du stream");
     let mut buffer = [0; 1024];
-    listener.read(&mut buffer).unwrap();
+    stream.read(&mut buffer).unwrap();
     warn!("RECEIVED DATA:{:?}",buffer);
 }
 
