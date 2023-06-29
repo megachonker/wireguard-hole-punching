@@ -6,6 +6,22 @@ use std::{
     io::{Read, Write},
     net::{IpAddr, SocketAddr, TcpListener, TcpStream}, time::Duration,
 };
+
+
+macro_rules! CHK_ERROR {
+    ($result:expr, $message:expr) => {
+        match $result {
+            Ok(value) => value,
+            Err(err) => {
+                error!("{}: {}", $message, err);
+                std::process::exit(1);
+            }
+        }
+    };
+}
+
+
+
 #[derive(Parser)] // requires `derive` feature
 struct Cli {
     /// Mode client: besoin addresse rendezvous
@@ -50,24 +66,19 @@ fn main() {
         }
 
         debug!("trying to connect to {} ...",ip_rdv);
-        match TcpStream::connect_timeout(&SocketAddr::new(ip_rdv, 12345), Duration::from_secs(1)) {
-            Ok(get_ip_stream) => {
-                info!("Connected to the Rendezvous point!");
+        let get_ip_stream =  CHK_ERROR!(TcpStream::connect_timeout(&SocketAddr::new(ip_rdv, 12345), Duration::from_secs(1)),"Failed to connect to the Rendezvous point");
+        info!("Connected to the Rendezvous point!");
 
-                warn!("connection information: {:?}",get_ip_stream);
+        warn!("connection information: {:?}",get_ip_stream);
 
-                if args.client_flag {
-                    trace!("I am client");
-                    client(get_ip_stream);
-                } else {
-                    trace!("I am server");
-                    server(get_ip_stream);
-                }
-            }
-            Err(e) => {
-                error!("Failed to connect to the Rendezvous point: {}", e);
-            }
+        if args.client_flag {
+            trace!("I am client");
+            client(get_ip_stream);
+        } else {
+            trace!("I am server");
+            server(get_ip_stream);
         }
+
     }
     else {
         info!("I am randezvous");
@@ -109,7 +120,7 @@ fn handle_server(stream:TcpStream){
 
 fn randezvous() {
     // Bind the TCP listener to the IP address and port
-    let listener = TcpListener::bind("127.0.0.1:1234").expect("Failed to bind to address");
+    let listener = CHK_ERROR!(TcpListener::bind("127.0.0.1:12345"),"Failed to bind Randez Vous");
     let server_stream = listener.incoming().next().unwrap().unwrap();
     let client_stream = listener.incoming().next().unwrap().unwrap();
 
