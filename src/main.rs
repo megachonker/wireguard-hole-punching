@@ -1,8 +1,10 @@
-use bincode::{deserialize, serialize};
+use env_logger::Env;
+use bincode::{deserialize};
 use clap::Parser;
+use log::{info, trace, error, debug, warn};
 use std::{
     io::{Read, Write},
-    net::{IpAddr, SocketAddr, TcpListener, TcpStream},
+    net::{IpAddr, SocketAddr, TcpListener, TcpStream}, time::Duration,
 };
 #[derive(Parser)] // requires `derive` feature
 struct Cli {
@@ -29,39 +31,46 @@ struct IpPort {
 }
 
 fn main() {
+    env_logger::Builder::from_env(Env::default().default_filter_or("trace")).init();
     let args = Cli::parse();
     let ip_rdv: IpAddr;
-
+    
     // do i have randezvous ?
     if !args.rdv_flag {
         if !(args.client_flag ^ args.server_flag) {
-            println!("flag client ^ server");
+            error!("No Server or Client flag set !");
             return;
         }
         match args.rdv_address {
             Some(res) => ip_rdv = res,
             None => {
-                println!("Give IP address Please");
+                error!("Give IP address Please");
                 return;
             }
         }
-        let get_ip_stream = TcpStream::connect(SocketAddr::new(ip_rdv, 12345)).unwrap();
 
-        //I am client
-        if args.client_flag {
-            client(get_ip_stream);
-        }
-        //I am server
-        else if args.server_flag {
-            server(get_ip_stream);
-        }
-        // I am nothing
-        else {
-            println!("no flag");
+        debug!("trying to connect to {} ...",ip_rdv);
+        match TcpStream::connect_timeout(&SocketAddr::new(ip_rdv, 12345), Duration::from_secs(1)) {
+            Ok(get_ip_stream) => {
+                info!("Connected to the Rendezvous point!");
+
+                warn!("connection information: {:?}",get_ip_stream);
+
+                if args.client_flag {
+                    trace!("I am client");
+                    client(get_ip_stream);
+                } else {
+                    trace!("I am server");
+                    server(get_ip_stream);
+                }
+            }
+            Err(e) => {
+                error!("Failed to connect to the Rendezvous point: {}", e);
+            }
         }
     }
-    // I am randezvous
     else {
+        info!("I am randezvous");
         randezvous();
     }
 }
@@ -88,9 +97,9 @@ fn handle_client(stream:TcpStream){
     let local_addr = stream.local_addr().unwrap();
     let peer_addr = stream.peer_addr().unwrap();
 
-    println!("New connection:");
-    println!("Local address: {:?}", local_addr);
-    println!("Remote address: {:?}", peer_addr);
+    info!("New connection:");
+    debug!("Local address: {:?}", local_addr);
+    debug!("Remote address: {:?}", peer_addr);
 }
 
 fn handle_server(stream:TcpStream){
