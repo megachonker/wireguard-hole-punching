@@ -1,7 +1,7 @@
 #!/bin/bash
 VPS=$(getent hosts vps| awk '{print $1}')
 cargo rustc -r -- -C target-feature=+crt-static
-scp target/release/wireguard-hole-punching vps:wireguard-hole-punching
+rsync --progress target/release/wireguard-hole-punching vps:wireguard-hole-punching
 
 # Create a new tmux session
 tmux new-session -d -s MySession
