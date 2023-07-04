@@ -11,5 +11,6 @@ clap = { version = "4.3.4", features = ["derive"] }
 clap_complete = "4.3.1"
 env_logger = "0.10.0"
 log = "0.4.19"
+net2 = "0.2.39"
 rayon = "1.7.0"
 serde = { version = "1.0.164", features = ["derive"] }
